@@ -1,3 +1,6 @@
+# main file for generating league table and team details from match data
+# assumes match data CSV has been created using scraping.py
+
 import argparse
 import pandas as pd
 from tabulate import tabulate
@@ -6,49 +9,57 @@ from tabulate import tabulate
 def load_matches(path, season=None):
     df = pd.read_csv(path)
 
-    if season is not None and "Season" in df.columns:
-        df = df[df["Season"] == season]
+    # Normalize column names
+    df.columns = df.columns.str.strip()
+
+    # Your CSV uses lowercase 'season'
+    if season is not None:
+        if "season" in df.columns:
+            df = df[df["season"] == season]
+        elif "Season" in df.columns:
+            df = df[df["Season"] == season]
 
     return df
 
 
 def build_league_table(df):
+    # normalize headers
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+
+    required = ["team", "gf", "ga", "result"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing columns {missing}. Available columns: {list(df.columns)}")
+
     table = {}
 
     for _, row in df.iterrows():
-        home = row["Home"]
-        away = row["Away"]
-        hg = row["HomeGoals"]
-        ag = row["AwayGoals"]
+        team = row["team"]
+        gf = int(row["gf"])
+        ga = int(row["ga"])
+        res = str(row["result"]).strip().upper()
 
-        for team in [home, away]:
-            if team not in table:
-                table[team] = {
-                    "GP": 0, "W": 0, "D": 0, "L": 0,
-                    "GF": 0, "GA": 0, "Pts": 0
-                }
+        if team not in table:
+            table[team] = {
+                "GP": 0, "W": 0, "D": 0, "L": 0,
+                "GF": 0, "GA": 0, "Pts": 0
+            }
 
-        table[home]["GP"] += 1
-        table[away]["GP"] += 1
+        table[team]["GP"] += 1
+        table[team]["GF"] += gf
+        table[team]["GA"] += ga
 
-        table[home]["GF"] += hg
-        table[home]["GA"] += ag
-        table[away]["GF"] += ag
-        table[away]["GA"] += hg
-
-        if hg > ag:
-            table[home]["W"] += 1
-            table[home]["Pts"] += 3
-            table[away]["L"] += 1
-        elif ag > hg:
-            table[away]["W"] += 1
-            table[away]["Pts"] += 3
-            table[home]["L"] += 1
+        r0 = res[:1]
+        if r0 == "W":
+            table[team]["W"] += 1
+            table[team]["Pts"] += 3
+        elif r0 == "L":
+            table[team]["L"] += 1
         else:
-            table[home]["D"] += 1
-            table[away]["D"] += 1
-            table[home]["Pts"] += 1
-            table[away]["Pts"] += 1
+            # Treat anything else as a draw (FBref uses "D" for draw)
+            table[team]["D"] += 1
+            table[team]["Pts"] += 1
 
     table_df = pd.DataFrame.from_dict(table, orient="index")
     table_df["GD"] = table_df["GF"] - table_df["GA"]
@@ -63,17 +74,19 @@ def build_league_table(df):
 
 
 def print_league_table(table_df):
-    display_df = table_df[
-        ["Pos", "Team", "GP", "W", "D", "L", "Pts"]
-    ]
+    display_df = table_df[["Pos", "Team", "GP", "W", "D", "L", "Pts"]]
     print("\n=== LEAGUE TABLE ===\n")
     print(tabulate(display_df, headers="keys", tablefmt="github", showindex=False))
 
 
 def team_details(df, table_df, team_query):
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+
+    # Find best match team name
     team = None
     for t in table_df["Team"]:
-        if team_query.lower() in t.lower():
+        if team_query.lower() in str(t).lower():
             team = t
             break
 
@@ -82,38 +95,37 @@ def team_details(df, table_df, team_query):
         return
 
     row = table_df[table_df["Team"] == team].iloc[0]
-    print(f"\n=== {team.upper()} ===")
+    print(f"\n=== {str(team).upper()} ===")
     print(
         f"GP: {row.GP}  W: {row.W}  D: {row.D}  "
         f"L: {row.L}  Pts: {row.Pts}  "
         f"GD: {row.GD}"
     )
 
-    matches = []
-    for _, r in df.iterrows():
-        if r["Home"] == team:
-            res = "W" if r["HomeGoals"] > r["AwayGoals"] else "L" if r["HomeGoals"] < r["AwayGoals"] else "D"
-            matches.append([
-                r.get("Date", ""),
-                "H",
-                r["Away"],
-                res,
-                f'{r["HomeGoals"]}-{r["AwayGoals"]}'
-            ])
-        elif r["Away"] == team:
-            res = "W" if r["AwayGoals"] > r["HomeGoals"] else "L" if r["AwayGoals"] < r["HomeGoals"] else "D"
-            matches.append([
-                r.get("Date", ""),
-                "A",
-                r["Home"],
-                res,
-                f'{r["AwayGoals"]}-{r["HomeGoals"]}'
-            ])
+    # Show match list for that team (rows are already team-perspective)
+    required = ["date", "venue", "opponent", "result", "gf", "ga", "team"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        print(f"\nCannot show match list, missing columns: {missing}")
+        return
 
-    matches_df = pd.DataFrame(
-        matches,
-        columns=["Date", "V", "Opponent", "Res", "Score"]
-    )
+    matches = []
+    team_rows = df[df["team"] == team]
+
+    for _, r in team_rows.iterrows():
+        v_raw = str(r.get("venue", "")).strip().lower()
+        v = "H" if v_raw.startswith("h") else "A" if v_raw.startswith("a") else ""
+
+        res = str(r.get("result", "")).strip().upper()[:1]
+        matches.append([
+            r.get("date", ""),
+            v,
+            r.get("opponent", ""),
+            res,
+            f'{int(r["gf"])}-{int(r["ga"])}'
+        ])
+
+    matches_df = pd.DataFrame(matches, columns=["Date", "V", "Opponent", "Res", "Score"])
 
     print("\nMatches:")
     print(tabulate(matches_df, headers="keys", tablefmt="github", showindex=False))
