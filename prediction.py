@@ -1,6 +1,8 @@
 # main file for generating league table and team details from match data
 # assumes match data CSV has been created using scraping.py
 
+# python3 -u ./prediction.py --data data/matches.csv --season 2022 --simulate --seed 7
+
 import argparse
 import pandas as pd
 from tabulate import tabulate
@@ -381,4 +383,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+
