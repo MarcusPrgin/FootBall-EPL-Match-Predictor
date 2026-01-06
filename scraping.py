@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import time
+from pathlib import Path
 from typing import List
 
 import pandas as pd
@@ -61,15 +62,20 @@ def scrape_team_season(team_url: str, season_year: int, *, session: requests.Ses
     shooting = pd.read_html(str(shooting_soup), match="Shooting")[0]
     shooting.columns = shooting.columns.droplevel()
 
+    # Merge shooting columns into match rows
     try:
         team_data = matches.merge(
             shooting[["Date", "Sh", "SoT", "Dist", "FK", "PK", "PKatt"]],
             on="Date",
+            how="left",
         )
-    except ValueError:
+    except Exception:
         return None
 
+    # Keep only EPL
     team_data = team_data[team_data["Comp"] == "Premier League"].copy()
+
+    # Add season + team
     team_data["Season"] = season_year
     team_data["Team"] = team_name
     return team_data
@@ -80,7 +86,6 @@ def scrape(seasons: List[int], *, sleep_s: float = 1.0) -> pd.DataFrame:
     standings_url = START_STANDINGS_URL
 
     headers = {
-        # A simple, polite UA helps reduce blocks.
         "User-Agent": "Mozilla/5.0 (compatible; epl-match-predictor/1.0; +https://example.com)"
     }
 
@@ -106,6 +111,8 @@ def scrape(seasons: List[int], *, sleep_s: float = 1.0) -> pd.DataFrame:
         raise RuntimeError("No matches were scraped. FBref layout may have changed or requests were blocked.")
 
     match_df = pd.concat(all_matches, ignore_index=True)
+
+    # Lowercase columns so prediction.py can rely on: team, opponent, venue, result, gf, ga, date, season...
     match_df.columns = [c.lower() for c in match_df.columns]
     return match_df
 
@@ -124,8 +131,10 @@ def main() -> None:
     args = parser.parse_args()
 
     df = scrape(args.seasons, sleep_s=args.sleep)
+
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(args.out)
+    df.to_csv(args.out, index=False)
+
     print(f"Saved {len(df):,} rows to {args.out}")
 
 
