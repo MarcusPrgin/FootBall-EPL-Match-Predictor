@@ -14,6 +14,14 @@ from sklearn.preprocessing import OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestRegressor
 
+# colors for terminal output
+
+COLOR_RESET = "\033[0m"
+COLOR_GOLD = "\033[93m"
+COLOR_SILVER = "\033[90m"
+COLOR_BRONZE = "\033[38;5;130m"
+COLOR_RED = "\033[91m"
+
 def _available_feature_cols(df):
     # Use whatever exists in your CSV (FBref scraping can vary a bit)
     candidate = ["xg", "xga", "poss", "sh", "sot", "dist", "fk", "pk", "pkatt", "attendance"]
@@ -287,9 +295,49 @@ def build_league_table(df):
     table_df.insert(0, "Pos", range(1, len(table_df) + 1))
     return table_df
 
-
 def print_league_table(table_df):
-    display_df = table_df[["Pos", "Team", "GP", "W", "D", "L", "Pts"]]
+    df = table_df.copy()
+
+    # Determine relegation cutoff (bottom 3)
+    relegation_positions = set(df["Pos"].nlargest(3))
+
+    styled_rows = []
+
+    for _, row in df.iterrows():
+        team = row["Team"]
+
+        # Winner
+        if row["Pos"] == 1:
+            team = f"{COLOR_GOLD}{team}{COLOR_RESET}"
+        
+        # Runner-up
+        if row["Pos"] == 2:
+            team = f"{COLOR_SILVER}{team}{COLOR_RESET}"
+        
+        # Third place
+        if row["Pos"] == 3:
+            team = f"{COLOR_BRONZE}{team}{COLOR_RESET}"
+
+        # Relegation
+        elif row["Pos"] in relegation_positions:
+            team = f"{COLOR_RED}{team}{COLOR_RESET}"
+        
+
+        styled_rows.append([
+            row["Pos"],
+            team,
+            row["GP"],
+            row["W"],
+            row["D"],
+            row["L"],
+            row["Pts"],
+        ])
+
+    display_df = pd.DataFrame(
+        styled_rows,
+        columns=["Pos", "Team", "GP", "W", "D", "L", "Pts"]
+    )
+
     print("\n=== LEAGUE TABLE ===\n")
     print(tabulate(display_df, headers="keys", tablefmt="github", showindex=False))
 
@@ -356,11 +404,11 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    print(">>> args:", args)
+    # print(">>> args:", args)
 
     df = load_matches(args.data, args.season)
-    print(">>> loaded df shape:", df.shape)
-    print(">>> columns:", list(df.columns))
+    # print(">>> loaded df shape:", df.shape)
+    # print(">>> columns:", list(df.columns))
 
     table_df = build_league_table(df)
     print(">>> built table rows:", len(table_df))
