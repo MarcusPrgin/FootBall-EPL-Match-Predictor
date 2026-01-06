@@ -1,3 +1,6 @@
+# main file for generating league table and team details from match data
+# assumes match data CSV has been created using scraping.py
+
 import argparse
 import pandas as pd
 from tabulate import tabulate
