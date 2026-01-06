@@ -66,7 +66,8 @@ https://github.com/dataquestio/project-walkthroughs
 
 Rolling averages are used to capture recent team form and improve prediction accuracy.
 
----
+## Out Put 
 
-## Project Structure
+- The output was up dated in the newest branch to print the standard epl table 
+- The Epl table consists of gp, wins, loss, draw, and points
 
