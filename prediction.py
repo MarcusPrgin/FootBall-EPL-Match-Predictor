@@ -1,6 +1,9 @@
 # main file for generating league table and team details from match data
 # assumes match data CSV has been created using scraping.py
 
+# python3 -m venv .venv
+# source .venv/bin/activate
+
 # python3 -u ./prediction.py --data data/matches.csv --season 2022 --simulate --seed 7
 
 import argparse
@@ -395,6 +398,7 @@ def team_details(df, table_df, team_query):
 
 
 def main():
+    global sim_df
     print(">>> prediction.py starting...")
 
     parser = argparse.ArgumentParser()
@@ -404,11 +408,11 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
 
-    # print(">>> args:", args)
+    print(">>> args:", args)
 
     df = load_matches(args.data, args.season)
-    # print(">>> loaded df shape:", df.shape)
-    # print(">>> columns:", list(df.columns))
+    print(">>> loaded df shape:", df.shape)
+    print(">>> columns:", list(df.columns))
 
     table_df = build_league_table(df)
     print(">>> built table rows:", len(table_df))
