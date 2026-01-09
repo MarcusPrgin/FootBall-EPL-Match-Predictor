@@ -176,8 +176,8 @@ def simulate_season(df, season_year=None, seed=42):
     for home, away in fixtures:
         # Build a single “match feature row” for each team perspective.
         # Home team features: its HOME profile + (optional) set venue="Home"
-        home_feat = _get_profile(home, "HOME")
-        away_feat = _get_profile(away, "AWAY")
+        home_feat = _get_profile(home, "HOME TEAM")
+        away_feat = _get_profile(away, "AWAY TEAM")
 
         # We predict home gf/ga using home profile (and venue Home),
         # and away gf/ga using away profile (and venue Away).
