@@ -8,6 +8,8 @@ Notes:
 - If the site layout changes, you may need to tweak the selectors.
 """
 
+# import annotations for Python 3.7+
+
 from __future__ import annotations
 
 import argparse
