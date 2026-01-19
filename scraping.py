@@ -22,6 +22,7 @@ import requests
 from bs4 import BeautifulSoup
 
 
+
 BASE = "https://fbref.com"
 START_STANDINGS_URL = f"{BASE}/en/comps/9/Premier-League-Stats"
 
@@ -98,7 +99,7 @@ def scrape(seasons: List[int], *, sleep_s: float = 1.0) -> pd.DataFrame:
             standings_soup = get_soup(standings_url, session=session)
             team_urls = extract_team_urls(standings_soup)
 
-            # advance to previous season for the next loop
+            # advance to previous season for the next loop.S
             prev = standings_soup.select_one("a.prev")
             if prev and prev.get("href"):
                 standings_url = f"{BASE}{prev.get('href')}"
